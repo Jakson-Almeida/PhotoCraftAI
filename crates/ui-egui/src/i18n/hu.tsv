@@ -4096,3 +4096,8 @@ cameraRaw	Yellow	Sárga
 	Clear Selected Guides	Kijelölt segédvonalak törlése
 	Generative Fill…	Generatív kitöltés…
 	Generate Image…	Kép létrehozása…
+
+# AI editor context images
+	Context images	Kontextusképek
+	Image link	Képhivatkozás
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Adjon hozzá képeket ebből a munkaterületből, importáljon egy fájlt, húzza ide, vagy illesszen be egy hivatkozást. A generatív kitöltés a megnyitott képet is elküldi.

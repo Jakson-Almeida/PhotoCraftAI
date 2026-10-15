@@ -733,7 +733,15 @@ pub fn body(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
                     if p.key == "profile" && PROFILE_DIALOGS.contains(&cmd.as_str()) && !opts.iter().any(|(v, _)| *v == cur) {
                         opts.push((cur.clone(), stem.as_str()));
                     }
-                    crate::widgets::dropdown(ui, &format!("flt-{cmd}-{}", p.key), &mut cur, &opts, 170.0);
+                    // Model ids are shown exactly (`google/gemini-…`), not as translated labels.
+                    let model_ids = p.key == "model" && options.iter().any(|o| o.contains('/'));
+                    let width = if model_ids { 400.0 } else { 170.0 };
+                    if model_ids {
+                        let raw: Vec<(String, &str)> = options.iter().map(|o| (o.clone(), o.as_str())).collect();
+                        crate::widgets::dropdown_literal(ui, &format!("flt-{cmd}-{}", p.key), &mut cur, &raw, width);
+                    } else {
+                        crate::widgets::dropdown(ui, &format!("flt-{cmd}-{}", p.key), &mut cur, &opts, width);
+                    }
                     f.insert(p.key.clone(), json!(cur));
                 });
             }
@@ -835,6 +843,7 @@ pub fn body(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
             }
         }
     }
+    crate::ai_dialog::context_controls(ui, f);
     // Read-only context the dialog opener supplies (e.g. the monitor profile in use).
     if let Some(note) = f.get("__note").and_then(Value::as_str) {
         ui.add_space(4.0);

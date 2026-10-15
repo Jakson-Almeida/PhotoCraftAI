@@ -3853,3 +3853,8 @@ curves	Smooth	スムーズ
 	Clear Selected Guides	選択したガイドを消去
 	Generative Fill…	生成塗りつぶし…
 	Generate Image…	画像を生成…
+
+# AI editor context images
+	Context images	参照画像
+	Image link	画像のリンク
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	このワークスペースの画像を追加するか、ファイルを読み込むか、ここにドロップするか、リンクを貼り付けます。ジェネレーティブ塗りつぶしは開いている画像も送ります。

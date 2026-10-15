@@ -194,8 +194,9 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
             let compact = d.fields.contains_key("__compact");
             // The curve editor caps its graph allocation at 300 points (#5113).
             let curves = fields.get("__adjust").and_then(Value::as_str) == Some("curves");
+            let ai = photocraft_engine::ai_cmds::is_ai_command(fields.get("__command").and_then(Value::as_str).unwrap_or(""));
             if !compact {
-                ui.set_min_width(if curves { 300.0 } else { 380.0 });
+                ui.set_min_width(if curves { 300.0 } else if ai { 560.0 } else { 380.0 });
             }
             let wide = crate::prefs_ui::width(&d.fields, (ctx.content_rect().width() - 48.0).max(380.0));
             if let Some(w) = wide {
@@ -219,6 +220,8 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
                 260.0
             } else if curves {
                 300.0
+            } else if ai {
+                640.0
             } else {
                 440.0
             }));
@@ -323,6 +326,7 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
                     // OK / Cancel buttons stay inside a small window. The preview window below the
                     // parameters reserves its own space (#3769).
                     let room = (ctx.content_rect().height() - DIALOG_CHROME - crate::filter_preview_ui::reserved_height(&fields)).max(120.0);
+                    crate::ai_dialog::refresh_workspace(app, &mut fields);
                     let body = |ui: &mut egui::Ui, fields: &mut serde_json::Map<String, Value>| {
                         egui::ScrollArea::vertical().id_salt(id.with("body")).max_height(room).show(ui, |ui| crate::filter_dialog::body(ui, fields));
                         // The in-dialog preview window sits under the scrolling parameters (#3769),
@@ -470,6 +474,7 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
         if let Some(dm) = app.ui.dialog_mut(d.id) {
             dm.fields = fields;
         }
+        crate::ai_dialog::take_import(app, d.id);
         // A colour swatch (Edit › Fill, Edit › Stroke) opens the Color Picker over the dialog.
         if outcome.is_none() {
             crate::color_picker_ui::open_requested(app, d.id);

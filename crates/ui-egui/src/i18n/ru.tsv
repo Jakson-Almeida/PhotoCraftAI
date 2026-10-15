@@ -3146,3 +3146,8 @@ curves	Smooth	Сгладить
 	Clear Selected Guides	Удалить выбранные направляющие
 	Generative Fill…	Генеративная заливка…
 	Generate Image…	Создать изображение…
+
+# AI editor context images
+	Context images	Изображения контекста
+	Image link	Ссылка на изображение
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Добавьте изображения из этого рабочего пространства, импортируйте файл, перетащите его сюда или вставьте ссылку. Генеративная заливка также отправляет открытое изображение.

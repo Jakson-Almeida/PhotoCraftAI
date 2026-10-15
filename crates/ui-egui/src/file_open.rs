@@ -168,6 +168,21 @@ impl PhotocraftApp {
     /// Preset files (brushes, gradients) always go to their libraries. Native drops carry an
     /// absolute path, read in bounded reads (#375) rather than egui's whole-file read.
     pub fn open_dropped(&mut self, ctx: &egui::Context, files: Vec<egui::DroppedFileHandle>, at: Option<egui::Pos2>) {
+        if let Some(dialog) = crate::ai_dialog::dialog_id(self) {
+            for f in files {
+                let name = dropped_name(&f);
+                let added = if f.path().is_absolute() {
+                    let path = f.path().to_string_lossy().into_owned();
+                    crate::ai_dialog::push_path(self, dialog, &name, &path)
+                } else {
+                    crate::read_dropped(&*f).and_then(|bytes| crate::ai_dialog::push_bytes(self, dialog, &name, &bytes))
+                };
+                if let Err(e) = added {
+                    self.failed(e);
+                }
+            }
+            return;
+        }
         let target = self.drop_target(ctx, at);
         let mut slot = match target {
             DropTarget::Tabs(slot) => Some(slot),

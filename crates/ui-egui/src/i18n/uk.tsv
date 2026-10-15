@@ -3876,3 +3876,8 @@ curves	Smooth	Згладити
 	Clear Selected Guides	Очистити вибрані напрямні
 	Generative Fill…	Генеративна заливка…
 	Generate Image…	Створити зображення…
+
+# AI editor context images
+	Context images	Зображення контексту
+	Image link	Посилання на зображення
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Додайте зображення з цього робочого простору, імпортуйте файл, перетягніть його сюди або вставте посилання. Генеративна заливка також надсилає відкрите зображення.

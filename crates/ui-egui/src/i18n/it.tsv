@@ -4298,3 +4298,8 @@ shape	Appearance	Aspetto
 	Clear Selected Guides	Cancella guide selezionate
 	Generative Fill…	Riempimento generativo…
 	Generate Image…	Genera immagine…
+
+# AI editor context images
+	Context images	Immagini di contesto
+	Image link	Link dell'immagine
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Aggiungi immagini da questo spazio di lavoro, importa un file, rilascialo qui o incolla un link. Il riempimento generativo invia anche l'immagine aperta.

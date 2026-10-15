@@ -9,6 +9,9 @@
 //! otherwise it opens a new document. Generative Fill sends the canvas (or the selection, plus a
 //! little of the picture around it) and puts the model's picture on a new layer. A selection
 //! becomes that layer's mask, so the change shows only inside the selection.
+//!
+//! Both commands take a model id from [`IMAGE_MODELS`] and up to [`MAX_CONTEXT`] extra pictures
+//! in `context`: an open document, one of its layers, a file path, image bytes, or an http(s) link.
 
 use photocraft_color::PixelFormat;
 use photocraft_doc::{Document, Layer, LayerContent, LayerMask};
@@ -22,7 +25,70 @@ use crate::{EngineError, Result, Session};
 const FILL: &str = "edit.generativeFill";
 const GENERATE: &str = "edit.generateImage";
 /// Fast model that accepts a prompt and a reference image. A stronger id can be passed as `model`.
-const DEFAULT_MODEL: &str = "google/gemini-3.1-flash-lite-image";
+pub const DEFAULT_MODEL: &str = "google/gemini-3.1-flash-lite-image";
+/// How many extra pictures one call may send, besides the picture Generative Fill is editing.
+pub const MAX_CONTEXT: usize = 4;
+/// OpenRouter image models the dialog offers. A command may still name another id.
+pub const IMAGE_MODELS: &[&str] = &[
+    "black-forest-labs/flux-3-image",
+    "black-forest-labs/flux-3-image-klein",
+    "black-forest-labs/flux.2-flex",
+    "black-forest-labs/flux.2-klein-4b",
+    "black-forest-labs/flux.2-max",
+    "black-forest-labs/flux.2-pro",
+    "bytedance-seed/seedream-4.5",
+    "bytedance-seed/seedream-5-0-flash",
+    "bytedance-seed/seedream-5-0-lite",
+    "bytedance-seed/seedream-5-0-pro",
+    "google/gemini-2.5-flash-image",
+    "google/gemini-3-pro-image",
+    "google/gemini-3-pro-image-preview",
+    "google/gemini-3.1-flash-image",
+    "google/gemini-3.1-flash-image-preview",
+    "google/gemini-3.1-flash-lite-image",
+    "google/gemini-nano-banana-2.1",
+    "krea/krea-2-large",
+    "krea/krea-2-medium",
+    "krea/krea-2-medium-turbo",
+    "meta/muse-image",
+    "microsoft/mai-image-2.5",
+    "microsoft/mai-image-2.5-pro",
+    "microsoft/mai-image-2.6",
+    "microsoft/mai-image-2.6-flash",
+    "openai/gpt-5-image",
+    "openai/gpt-5-image-mini",
+    "openai/gpt-5.4-image-2",
+    "openai/gpt-image-1",
+    "openai/gpt-image-1-mini",
+    "openai/gpt-image-2",
+    "openai/gpt-image-2.5-flare",
+    "openai/gpt-image-2.5-sunburst",
+    "qwen/qwen-image-3",
+    "qwen/qwen-image-3-pro",
+    "recraft/recraft-v3",
+    "recraft/recraft-v4",
+    "recraft/recraft-v4-pro",
+    "recraft/recraft-v4-pro-vector",
+    "recraft/recraft-v4-styles",
+    "recraft/recraft-v4-styles-pro",
+    "recraft/recraft-v4-styles-pro-vector",
+    "recraft/recraft-v4-styles-vector",
+    "recraft/recraft-v4-vector",
+    "recraft/recraft-v4.1",
+    "recraft/recraft-v4.1-flash",
+    "recraft/recraft-v4.1-pro",
+    "recraft/recraft-v4.1-pro-vector",
+    "recraft/recraft-v4.1-utility",
+    "recraft/recraft-v4.1-utility-pro",
+    "recraft/recraft-v4.1-vector",
+    "sourceful/riverflow-v2-fast",
+    "sourceful/riverflow-v2-pro",
+    "sourceful/riverflow-v2.5-fast",
+    "sourceful/riverflow-v2.5-pro",
+    "tencent/hy-image-v3.5-preview",
+    "x-ai/grok-imagine-image-2.0",
+    "x-ai/grok-imagine-image-quality",
+];
 const ASPECTS: &[&str] = &["1:1", "16:9", "9:16", "4:3", "3:2", "3:4"];
 /// Longest edge of the picture sent to the model. The result is scaled back to the canvas.
 const MAX_EDGE: u32 = 1024;
@@ -70,15 +136,31 @@ struct Dest {
 struct Request {
     prompt: String,
     model: String,
-    /// Sent only for a new picture. An edit follows the reference image.
+    /// Sent only for a new picture. An edit follows the reference images.
     aspect: Option<String>,
-    reference: Option<Vec<u8>>,
+    /// Generative Fill: the first picture is the one being edited.
+    edit: bool,
+    sources: Vec<RefSource>,
+}
+
+/// One picture to send with the prompt. Document pixels are already encoded; the rest is read
+/// while the request runs.
+enum RefSource {
+    Png(Vec<u8>),
+    Path(String),
+    Inline { name: String, bytes: Vec<u8> },
+    Url(String),
 }
 
 struct Made {
     png: Vec<u8>,
     model: String,
     cost: Option<f64>,
+}
+
+/// Whether `id` is Generate Image or Generative Fill.
+pub fn is_ai_command(id: &str) -> bool {
+    id == FILL || id == GENERATE
 }
 
 pub fn specs() -> Vec<CommandSpec> {
@@ -88,7 +170,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Generative Fill…",
             menu: &["Edit"],
             shortcut: None,
-            params: r#"{"prompt":text,"model":text} required prompt; optional OpenRouter model id (default google/gemini-3.1-flash-lite-image). Needs OPENROUTER_MAIN_KEY or OPENROUTER_API_KEY. Sends the canvas, or the selection plus surrounding context, and adds the result as a new layer."#,
+            params: fill_params(),
             enabled: has_doc,
             journal: true,
             run: |s, p| run(s, FILL, p),
@@ -98,12 +180,40 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Generate Image…",
             menu: &["Edit"],
             shortcut: None,
-            params: r#"{"prompt":text,"model":text,"aspectRatio":"1:1|16:9|9:16|4:3|3:2|3:4"="1:1"} required prompt; optional model id and aspect ratio. Needs OPENROUTER_MAIN_KEY or OPENROUTER_API_KEY. Adds a layer, or opens a new document when none is open."#,
+            params: generate_params(),
             enabled: always,
             journal: true,
             run: |s, p| run(s, GENERATE, p),
         },
     ]
+}
+
+fn model_menu() -> String {
+    IMAGE_MODELS.join("|")
+}
+
+fn fill_params() -> &'static str {
+    static PARAMS: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    PARAMS
+        .get_or_init(|| {
+            format!(
+                r#"{{"prompt":text,"model":"{models}"="{DEFAULT_MODEL}","context":json}} required prompt. model is an OpenRouter image model id. context is up to {MAX_CONTEXT} extra images, each {{"document":index}}, {{"document":index,"layer":id}}, {{"path":file}}, {{"url":"https://…"}}, or {{"name":file,"data":base64}}. Needs OPENROUTER_MAIN_KEY or OPENROUTER_API_KEY. Sends the canvas, or the selection plus surrounding context, and adds the result as a new layer."#,
+                models = model_menu(),
+            )
+        })
+        .as_str()
+}
+
+fn generate_params() -> &'static str {
+    static PARAMS: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    PARAMS
+        .get_or_init(|| {
+            format!(
+                r#"{{"prompt":text,"model":"{models}"="{DEFAULT_MODEL}","aspectRatio":"1:1|16:9|9:16|4:3|3:2|3:4"="1:1","context":json}} required prompt. model is an OpenRouter image model id. aspectRatio applies to the new picture. context is up to {MAX_CONTEXT} images, each {{"document":index}}, {{"document":index,"layer":id}}, {{"path":file}}, {{"url":"https://…"}}, or {{"name":file,"data":base64}}. Needs OPENROUTER_MAIN_KEY or OPENROUTER_API_KEY. Adds a layer, or opens a new document when none is open."#,
+                models = model_menu(),
+            )
+        })
+        .as_str()
 }
 
 fn run(s: &mut Session, cmd: &str, p: &Value) -> Result<Value> {
@@ -115,6 +225,7 @@ fn run(s: &mut Session, cmd: &str, p: &Value) -> Result<Value> {
 
 fn prepare(s: &Session, cmd: &str, p: &Value) -> Result<(Request, Plan)> {
     let mut request = parse_request(cmd, p)?;
+    request.sources.extend(context_sources(s, cmd, p)?);
     if cmd == GENERATE && s.active().is_none() {
         let title = request.prompt.clone();
         return Ok((request, Plan { dest: None, label: "Generate Image", title }));
@@ -139,7 +250,8 @@ fn prepare(s: &Session, cmd: &str, p: &Value) -> Result<(Request, Plan)> {
     if rect.is_empty() {
         return Err(other("the selection is outside the canvas"));
     }
-    request.reference = Some(upload_png(&st.doc, rect)?);
+    request.edit = true;
+    request.sources.insert(0, RefSource::Png(upload_png(&st.doc, rect)?));
     let title = request.prompt.clone();
     let plan = Plan { dest: Some(Dest { rect, fit: false, mask, name: "Generative Fill".into() }), label: "Generative Fill", title };
     Ok((request, plan))
@@ -163,7 +275,7 @@ fn parse_request(cmd: &str, p: &Value) -> Result<Request> {
         Some(_) => return Err(bad(cmd, "`model` must be a string")),
     };
     let aspect = if cmd == GENERATE { Some(aspect_ratio(cmd, p)?) } else { None };
-    Ok(Request { prompt, model: model_slug(cmd, &model)?, aspect, reference: None })
+    Ok(Request { prompt, model: model_slug(cmd, &model)?, aspect, edit: false, sources: Vec::new() })
 }
 
 fn model_slug(cmd: &str, raw: &str) -> Result<String> {
@@ -195,8 +307,21 @@ fn inflate(r: Rect, margin: i32) -> Rect {
     Rect::new(r.x0.saturating_sub(margin), r.y0.saturating_sub(margin), r.x1.saturating_add(margin), r.y1.saturating_add(margin))
 }
 
+fn layer_png(layer: &Layer) -> Result<Vec<u8>> {
+    let surf = layer.surface().ok_or_else(|| other("that layer has no pixels"))?;
+    let rect = surf.content_bounds();
+    if rect.is_empty() {
+        return Err(other("that layer has no pixels"));
+    }
+    png_of_surface(surf, rect)
+}
+
 fn upload_png(doc: &Document, rect: Rect) -> Result<Vec<u8>> {
     let surf = crate::pixels::composite_layers(doc, PixelFormat::RGBA8, Some([1.0, 1.0, 1.0]));
+    png_of_surface(&surf, rect)
+}
+
+fn png_of_surface(surf: &Surface, rect: Rect) -> Result<Vec<u8>> {
     let (tw, th) = sample_size(rect.width(), rect.height())?;
     let mut rgb = Vec::new();
     let pixels = (tw as usize).checked_mul(th as usize).ok_or_else(|| other("the image is too large to send"))?;
@@ -261,8 +386,11 @@ fn fetch(ctx: &crate::jobs::JobCtx, request: &Request) -> Result<Made> {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let key = api_key()?;
-        ctx.progress(0.15, "Waiting for the image model");
-        let body = request_body(request)?;
+        ctx.progress(0.12, "Reading context images");
+        let pngs = resolve_sources(&request.sources)?;
+        ctx.check()?;
+        ctx.progress(0.2, "Waiting for the image model");
+        let body = request_body(request, &pngs)?;
         let text = post_images(&key, &body)?;
         ctx.check()?;
         ctx.progress(0.9, "Reading the image");
@@ -271,9 +399,16 @@ fn fetch(ctx: &crate::jobs::JobCtx, request: &Request) -> Result<Made> {
     }
 }
 
-fn request_body(request: &Request) -> Result<Value> {
-    let instruction = if request.reference.is_some() {
+fn request_body(request: &Request, pngs: &[Vec<u8>]) -> Result<Value> {
+    let instruction = if request.edit && pngs.len() > 1 {
+        format!(
+            "Edit the first attached photograph. Keep the same framing, subject and lighting except for this change: {}. Any further attached images are reference only.",
+            request.prompt
+        )
+    } else if request.edit {
         format!("Edit the attached photograph. Keep the same framing, subject and lighting except for this change: {}", request.prompt)
+    } else if !pngs.is_empty() {
+        format!("Use the attached images as context. {}", request.prompt)
     } else {
         request.prompt.clone()
     };
@@ -288,14 +423,196 @@ fn request_body(request: &Request) -> Result<Value> {
     {
         obj.insert("aspect_ratio".into(), json!(ratio));
     }
-    if let Some(png) = &request.reference
+    if !pngs.is_empty()
         && let Some(obj) = body.as_object_mut()
     {
-        let mut url = String::from("data:image/png;base64,");
-        url.push_str(&photocraft_paint::tile::b64_encode(png));
-        obj.insert("input_references".into(), json!([{ "type": "image_url", "image_url": { "url": url } }]));
+        let refs: Vec<Value> = pngs
+            .iter()
+            .map(|png| {
+                let mut url = String::from("data:image/png;base64,");
+                url.push_str(&photocraft_paint::tile::b64_encode(png));
+                json!({ "type": "image_url", "image_url": { "url": url } })
+            })
+            .collect();
+        obj.insert("input_references".into(), Value::Array(refs));
     }
     Ok(body)
+}
+
+fn context_sources(s: &Session, cmd: &str, p: &Value) -> Result<Vec<RefSource>> {
+    let Some(value) = p.get("context").filter(|v| !v.is_null()) else { return Ok(Vec::new()) };
+    let items = value.as_array().ok_or_else(|| bad(cmd, "`context` must be a list of images"))?;
+    if items.len() > MAX_CONTEXT {
+        return Err(bad(cmd, format!("at most {MAX_CONTEXT} context images")));
+    }
+    let mut out = Vec::with_capacity(items.len());
+    for item in items {
+        out.push(one_source(s, cmd, item)?);
+    }
+    Ok(out)
+}
+
+fn one_source(s: &Session, cmd: &str, item: &Value) -> Result<RefSource> {
+    let obj = item.as_object().ok_or_else(|| bad(cmd, "each context image must be an object"))?;
+    if let Some(url) = obj.get("url").filter(|v| !v.is_null()) {
+        let url = url.as_str().ok_or_else(|| bad(cmd, "`url` must be a string"))?;
+        return Ok(RefSource::Url(image_link(cmd, url)?));
+    }
+    if let Some(path) = obj.get("path").filter(|v| !v.is_null()) {
+        let path = path.as_str().ok_or_else(|| bad(cmd, "`path` must be a string"))?;
+        return Ok(RefSource::Path(image_path(cmd, path)?));
+    }
+    if let Some(data) = obj.get("data").filter(|v| !v.is_null()) {
+        let data = data.as_str().ok_or_else(|| bad(cmd, "`data` must be base64"))?;
+        let name = obj.get("name").and_then(Value::as_str).unwrap_or("context.png");
+        return Ok(RefSource::Inline { name: file_name(name), bytes: image_data(cmd, data)? });
+    }
+    if let Some(index) = obj.get("document").filter(|v| !v.is_null()) {
+        let index = index.as_u64().ok_or_else(|| bad(cmd, "`document` must be a document index"))?;
+        let index = usize::try_from(index).map_err(|_| bad(cmd, "`document` is out of range"))?;
+        let st = s.documents().get(index).ok_or_else(|| bad(cmd, format!("no document at index {index}")))?;
+        let png = if let Some(layer) = obj.get("layer").filter(|v| !v.is_null()) {
+            let id = layer.as_u64().ok_or_else(|| bad(cmd, "`layer` must be a layer id"))?;
+            let layer = st.doc.layer(photocraft_doc::LayerId(id)).ok_or_else(|| bad(cmd, format!("no layer {id}")))?;
+            layer_png(layer)?
+        } else {
+            let canvas = st.doc.bounds();
+            if canvas.is_empty() {
+                return Err(bad(cmd, "that document has no pixels"));
+            }
+            upload_png(&st.doc, canvas)?
+        };
+        return Ok(RefSource::Png(png));
+    }
+    Err(bad(cmd, "a context image needs a document, path, url, or data"))
+}
+
+fn image_link(cmd: &str, raw: &str) -> Result<String> {
+    let url = raw.trim();
+    let rest = url.strip_prefix("https://").or_else(|| url.strip_prefix("http://"));
+    let Some(rest) = rest else {
+        return Err(bad(cmd, "a context image link must start with http:// or https://"));
+    };
+    if url.len() > 2000 || rest.is_empty() || url.chars().any(|c| c.is_control() || c.is_whitespace()) {
+        return Err(bad(cmd, "that context image link is not usable"));
+    }
+    let host = rest.split(['/', '?', '#']).next().unwrap_or("");
+    if host.is_empty() || host.contains('@') {
+        return Err(bad(cmd, "that context image link is not usable"));
+    }
+    Ok(url.to_string())
+}
+
+fn image_path(cmd: &str, raw: &str) -> Result<String> {
+    let path = raw.trim();
+    if path.is_empty() || path.len() > 4096 || path.chars().any(|c| c == '\0') {
+        return Err(bad(cmd, "that context image path is not usable"));
+    }
+    Ok(path.to_string())
+}
+
+fn image_data(cmd: &str, data: &str) -> Result<Vec<u8>> {
+    if data.len() > MAX_IMAGE.saturating_mul(2) {
+        return Err(bad(cmd, "a context image is larger than 32 MB"));
+    }
+    let bytes = photocraft_paint::tile::b64_decode(data).ok_or_else(|| bad(cmd, "a context image was not valid base64"))?;
+    if bytes.is_empty() || bytes.len() > MAX_IMAGE {
+        return Err(bad(cmd, "a context image was empty or larger than 32 MB"));
+    }
+    Ok(bytes)
+}
+
+fn file_name(name: &str) -> String {
+    let name = name.rsplit(['/', '\\']).next().unwrap_or(name).trim();
+    let mut out = String::new();
+    for ch in name.chars().take(80) {
+        if ch.is_control() {
+            continue;
+        }
+        out.push(ch);
+    }
+    if out.is_empty() { "context.png".into() } else { out }
+}
+
+fn resolve_sources(sources: &[RefSource]) -> Result<Vec<Vec<u8>>> {
+    let mut out = Vec::with_capacity(sources.len());
+    for source in sources {
+        out.push(resolve_source(source)?);
+    }
+    Ok(out)
+}
+
+fn resolve_source(source: &RefSource) -> Result<Vec<u8>> {
+    match source {
+        RefSource::Png(bytes) => Ok(bytes.clone()),
+        RefSource::Inline { name, bytes } => png_of_bytes(name, bytes),
+        RefSource::Path(path) => {
+            #[cfg(target_arch = "wasm32")]
+            {
+                let _ = path;
+                Err(other("a context image from a file runs in the native app, not in the browser"))
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let bytes = read_image_file(std::path::Path::new(path))?;
+                png_of_bytes(&file_name(path), &bytes)
+            }
+        }
+        RefSource::Url(url) => {
+            #[cfg(target_arch = "wasm32")]
+            {
+                let _ = url;
+                Err(other("a context image from a link runs in the native app, not in the browser"))
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let bytes = download_image(url)?;
+                png_of_bytes("context.png", &bytes)
+            }
+        }
+    }
+}
+
+fn png_of_bytes(name: &str, bytes: &[u8]) -> Result<Vec<u8>> {
+    let imported = photocraft_io::import(name, bytes).map_err(|_| other(format!("{name} is not an image PhotoCraft can read")))?;
+    check_side(imported.document.size.width, imported.document.size.height)?;
+    let canvas = imported.document.bounds();
+    if canvas.is_empty() {
+        return Err(other(format!("{name} has no pixels")));
+    }
+    upload_png(&imported.document, canvas)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn read_image_file(path: &std::path::Path) -> Result<Vec<u8>> {
+    use std::io::Read;
+    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("image");
+    let file = std::fs::File::open(path).map_err(|_| other(format!("could not read {name}")))?;
+    let mut file = file.take(MAX_IMAGE as u64 + 1);
+    let mut buf = Vec::new();
+    file.read_to_end(&mut buf).map_err(|_| other(format!("could not read {name}")))?;
+    if buf.is_empty() || buf.len() > MAX_IMAGE {
+        return Err(other(format!("{name} was empty or larger than 32 MB")));
+    }
+    Ok(buf)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn download_image(url: &str) -> Result<Vec<u8>> {
+    use std::io::Read;
+    let agent = ureq::AgentBuilder::new().timeout(std::time::Duration::from_secs(30)).redirects(3).build();
+    let response = agent.get(url).set("Accept", "image/*,*/*").call();
+    let resp = match response {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(code, _)) => return Err(other(format!("could not download the context image (HTTP {code})"))),
+        Err(_) => return Err(other("could not download the context image")),
+    };
+    let mut buf = Vec::new();
+    resp.into_reader().take(MAX_IMAGE as u64 + 1).read_to_end(&mut buf).map_err(|_| other("could not download the context image"))?;
+    if buf.is_empty() || buf.len() > MAX_IMAGE {
+        return Err(other("the downloaded context image was empty or larger than 32 MB"));
+    }
+    Ok(buf)
 }
 
 fn apply(s: &mut Session, made: Made, plan: Plan) -> Result<Value> {
@@ -587,6 +904,59 @@ mod tests {
         assert!(err.to_string().contains("aspectRatio"), "{err}");
         let err = s.execute(FILL, json!({"prompt": "make the sky blue"})).unwrap_err();
         assert!(err.to_string().contains("document"), "{err}");
+    }
+
+    #[test]
+    fn context_images_are_checked_before_any_request() {
+        let mut s = Session::new();
+        s.execute("file.new", json!({"width": 8, "height": 8, "background": "white"})).unwrap();
+        let err = s.execute(GENERATE, json!({"prompt": "a cup", "context": {"url": "https://example.com/a.png"}})).unwrap_err();
+        assert!(err.to_string().contains("list"), "{err}");
+        let err = s.execute(GENERATE, json!({"prompt": "a cup", "context": [{"url": "file:///tmp/a.png"}]})).unwrap_err();
+        assert!(err.to_string().contains("http"), "{err}");
+        let err = s.execute(GENERATE, json!({"prompt": "a cup", "context": [{"url": "https://user:secret@example.com/a.png"}]})).unwrap_err();
+        assert!(err.to_string().contains("not usable"), "{err}");
+        assert!(!err.to_string().contains("secret"), "{err}");
+        let many = vec![json!({"url": "https://example.com/a.png"}); 5];
+        let err = s.execute(GENERATE, json!({"prompt": "a cup", "context": many})).unwrap_err();
+        assert!(err.to_string().contains("4"), "{err}");
+        let err = s.execute(GENERATE, json!({"prompt": "a cup", "context": [{"document": 3}]})).unwrap_err();
+        assert!(err.to_string().contains("document"), "{err}");
+        let err = s.execute(GENERATE, json!({"prompt": "a cup", "context": [{"document": 0, "layer": 999}]})).unwrap_err();
+        assert!(err.to_string().contains("layer"), "{err}");
+    }
+
+    #[test]
+    fn an_open_document_and_inline_bytes_become_reference_images() {
+        let mut s = Session::new();
+        s.execute("file.new", json!({"width": 4, "height": 4, "background": "white"})).unwrap();
+        let png = red_png();
+        let data = photocraft_paint::tile::b64_encode(&png);
+        let sources = context_sources(
+            &s,
+            GENERATE,
+            &json!({"context": [{"document": 0}, {"name": "red.png", "data": data}]}),
+        )
+        .unwrap();
+        assert_eq!(sources.len(), 2);
+        let pngs = resolve_sources(&sources).unwrap();
+        assert_eq!(pngs.len(), 2);
+        let request = Request { prompt: "use these".into(), model: DEFAULT_MODEL.into(), aspect: Some("1:1".into()), edit: false, sources: Vec::new() };
+        let body = request_body(&request, &pngs).unwrap();
+        let refs = body["input_references"].as_array().unwrap();
+        assert_eq!(refs.len(), 2);
+        assert!(body["prompt"].as_str().unwrap().contains("context"), "{}", body["prompt"]);
+        let edit = Request { prompt: "make it blue".into(), model: DEFAULT_MODEL.into(), aspect: None, edit: true, sources: Vec::new() };
+        let body = request_body(&edit, &pngs).unwrap();
+        assert!(body["prompt"].as_str().unwrap().contains("first attached"), "{}", body["prompt"]);
+    }
+
+    #[test]
+    fn the_model_menu_includes_the_default() {
+        assert!(IMAGE_MODELS.contains(&DEFAULT_MODEL));
+        assert!(IMAGE_MODELS.len() > 8);
+        assert!(generate_params().contains(DEFAULT_MODEL));
+        assert!(fill_params().contains("context"));
     }
 
     #[test]

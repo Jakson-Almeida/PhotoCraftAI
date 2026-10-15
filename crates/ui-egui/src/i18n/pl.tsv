@@ -3775,3 +3775,8 @@ curves	Smooth	Wygładź
 	Clear Selected Guides	Usuń zaznaczone prowadnice
 	Generative Fill…	Wypełnienie generatywne…
 	Generate Image…	Generuj obraz…
+
+# AI editor context images
+	Context images	Obrazy kontekstu
+	Image link	Łącze obrazu
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Dodaj obrazy z tego obszaru roboczego, zaimportuj plik, upuść go tutaj albo wklej łącze. Wypełnienie generatywne wysyła też otwarty obraz.

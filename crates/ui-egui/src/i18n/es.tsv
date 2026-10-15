@@ -4139,3 +4139,8 @@ navigator	Zoom	Zoom
 	Clear Selected Guides	Borrar guías seleccionadas
 	Generative Fill…	Relleno generativo…
 	Generate Image…	Generar imagen…
+
+# AI editor context images
+	Context images	Imágenes de contexto
+	Image link	Enlace de imagen
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Añade imágenes de este espacio de trabajo, importa un archivo, suéltalo aquí o pega un enlace. Relleno generativo también envía la imagen abierta.

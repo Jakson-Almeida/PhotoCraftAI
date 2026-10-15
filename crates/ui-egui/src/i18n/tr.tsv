@@ -3907,3 +3907,8 @@ cameraData	Lens	Lens
 	Clear Selected Guides	Seçili Kılavuzları Temizle
 	Generative Fill…	Üretken doldurma…
 	Generate Image…	Görüntü oluştur…
+
+# AI editor context images
+	Context images	Bağlam görselleri
+	Image link	Görsel bağlantısı
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Bu çalışma alanından görseller ekleyin, bir dosya içe aktarın, buraya bırakın veya bir bağlantı yapıştırın. Üretken doldurma açık görseli de gönderir.

@@ -15,6 +15,7 @@ macro_rules! tl {
 }
 
 pub mod actions;
+mod ai_dialog;
 pub mod adjust_dialog;
 pub mod adjust_editors;
 pub mod adjust_preview;

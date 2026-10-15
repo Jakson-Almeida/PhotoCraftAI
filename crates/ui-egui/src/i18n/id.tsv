@@ -3168,3 +3168,8 @@ curves	Smooth	Haluskan
 	Clear Selected Guides	Hapus Panduan Terpilih
 	Generative Fill…	Isi generatif…
 	Generate Image…	Buat gambar…
+
+# AI editor context images
+	Context images	Gambar konteks
+	Image link	Tautan gambar
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Tambahkan gambar dari ruang kerja ini, impor berkas, jatuhkan di sini, atau tempel tautan. Isi Generatif juga mengirim gambar yang terbuka.

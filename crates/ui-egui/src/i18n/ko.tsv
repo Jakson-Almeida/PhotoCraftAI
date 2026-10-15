@@ -3355,3 +3355,9 @@ curves	Smooth	매끄럽게
 	Clear Selected Guides	선택한 안내선 지우기
 	Generative Fill…	생성형 채우기…
 	Generate Image…	이미지 생성…
+
+# AI editor context images
+	Import…	가져오기…
+	Context images	참고 이미지
+	Image link	이미지 링크
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	이 작업 공간의 그림을 추가하거나, 파일을 가져오거나, 여기에 놓거나, 링크를 붙여 넣으세요. 생성형 채우기는 열린 그림도 보냅니다.
