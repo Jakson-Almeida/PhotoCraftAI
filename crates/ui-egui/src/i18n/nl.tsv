@@ -3935,3 +3935,10 @@ curves	Smooth	Vloeiend maken
 # View › Guides › right-click a guide
 	Edit Selected Guides	Geselecteerde hulplijnen bewerken
 	Clear Selected Guides	Geselecteerde hulplijnen wissen
+	Generative Fill…	Generatieve vulling…
+	Generate Image…	Afbeelding genereren…
+
+# AI editor context images
+	Context images	Contextafbeeldingen
+	Image link	Afbeeldingslink
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Voeg afbeeldingen uit deze werkruimte toe, importeer een bestand, sleep het hierheen of plak een link. Generatief vullen stuurt ook de geopende afbeelding.

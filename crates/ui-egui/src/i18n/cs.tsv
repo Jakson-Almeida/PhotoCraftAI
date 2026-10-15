@@ -3783,3 +3783,11 @@ navigator	Zoom	Zvětšení
 # View › Guides › right-click a guide
 	Edit Selected Guides	Upravit vybraná vodítka
 	Clear Selected Guides	Vymazat vybraná vodítka
+	Generative Fill…	Generativní výplň…
+	Generate Image…	Vygenerovat obrázek…
+
+# AI editor context images
+	Import…	Importovat…
+	Context images	Kontextové obrázky
+	Image link	Odkaz na obrázek
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Přidejte obrázky z tohoto pracovního prostoru, importujte soubor, přetáhněte ho sem nebo vložte odkaz. Generativní výplň posílá i otevřený obrázek.

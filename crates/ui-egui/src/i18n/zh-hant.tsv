@@ -2775,3 +2775,11 @@ curves	Smooth	平滑
 # View › Guides › right-click a guide
 	Edit Selected Guides	編輯所選參考線
 	Clear Selected Guides	清除所選參考線
+	Generative Fill…	生成式填滿…
+	Generate Image…	產生影像…
+
+# AI editor context images
+	Import…	匯入…
+	Context images	參考影像
+	Image link	影像連結
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	可從目前工作區加入影像、匯入檔案、拖放到此處，或貼上連結。生成式填色也會送出目前開啟的影像。

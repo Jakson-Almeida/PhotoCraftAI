@@ -4248,3 +4248,10 @@ shape	Appearance	Izgled
 # View › Guides › right-click a guide
 	Edit Selected Guides	Uredi izabrane vodilje
 	Clear Selected Guides	Ukloni izabrane vodilje
+	Generative Fill…	Generativno popunjavanje…
+	Generate Image…	Generiši sliku…
+
+# AI editor context images
+	Context images	Kontekstualne slike
+	Image link	Veza ka slici
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Dodajte slike iz ovog radnog prostora, uvezite datoteku, prevucite je ovde ili nalepite vezu. Generativno popunjavanje takođe šalje otvorenu sliku.

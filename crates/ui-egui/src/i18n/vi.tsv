@@ -3661,3 +3661,11 @@ curves	Smooth	Làm mượt
 # View › Guides › right-click a guide
 	Edit Selected Guides	Sửa đường căn đã chọn
 	Clear Selected Guides	Xóa đường căn đã chọn
+	Generative Fill…	Tô tạo sinh…
+	Generate Image…	Tạo hình ảnh…
+
+# AI editor context images
+	Import…	Nhập…
+	Context images	Ảnh ngữ cảnh
+	Image link	Liên kết ảnh
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Thêm ảnh từ không gian làm việc này, nhập một tệp, thả vào đây, hoặc dán một liên kết. Tô đầy tạo sinh cũng gửi ảnh đang mở.

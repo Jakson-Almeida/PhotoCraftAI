@@ -3965,3 +3965,10 @@ layerLabel	No Color	Sem cor
 # View › Guides › right-click a guide
 	Edit Selected Guides	Editar guias selecionadas
 	Clear Selected Guides	Limpar guias selecionadas
+	Generative Fill…	Preenchimento generativo…
+	Generate Image…	Gerar imagem…
+
+# AI editor context images
+	Context images	Imagens de contexto
+	Image link	Link da imagem
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Adicione imagens deste espaço de trabalho, importe um arquivo, solte um aqui ou cole um link. O preenchimento generativo também envia a imagem aberta.

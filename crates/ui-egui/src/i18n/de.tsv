@@ -3177,3 +3177,11 @@ curves	Smooth	Glätten
 # View › Guides › right-click a guide
 	Edit Selected Guides	Ausgewählte Hilfslinien bearbeiten
 	Clear Selected Guides	Ausgewählte Hilfslinien löschen
+	Generative Fill…	Generative Füllung…
+	Generate Image…	Bild erzeugen…
+
+# AI editor context images
+	Import…	Importieren…
+	Context images	Kontextbilder
+	Image link	Bildlink
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Bilder aus diesem Arbeitsbereich hinzufügen, eine Datei importieren, hier ablegen oder einen Link einfügen. Generatives Füllen sendet auch das geöffnete Bild.

@@ -3875,3 +3875,10 @@ curves	Smooth	Εξομάλυνση
 # View › Guides › right-click a guide
 	Edit Selected Guides	Επεξεργασία επιλεγμένων οδηγών
 	Clear Selected Guides	Απαλοιφή επιλεγμένων οδηγών
+	Generative Fill…	Παραγωγικό γέμισμα…
+	Generate Image…	Δημιουργία εικόνας…
+
+# AI editor context images
+	Context images	Εικόνες περιβάλλοντος
+	Image link	Σύνδεσμος εικόνας
+	Add pictures from this workspace, import a file, drop one here, or paste a link. Generative Fill also sends the open picture.	Προσθέστε εικόνες από αυτόν τον χώρο εργασίας, εισαγάγετε ένα αρχείο, αποθέστε ένα εδώ ή επικολλήστε έναν σύνδεσμο. Η γενετική πλήρωση στέλνει και την ανοιχτή εικόνα.
