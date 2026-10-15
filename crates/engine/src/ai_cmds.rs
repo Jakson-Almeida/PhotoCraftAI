@@ -1,8 +1,9 @@
 //! Edit › Generate Image and Edit › Generative Fill.
 //!
 //! Both commands call [OpenRouter's image API](https://openrouter.ai/docs/guides/overview/multimodal/image-generation).
-//! The key is `OPENROUTER_API_KEY`, or the same name in a `.env` file in the directory PhotoCraft
-//! was started from. The key is never written into a document, a log line or an error.
+//! The key is `OPENROUTER_MAIN_KEY`, or `OPENROUTER_API_KEY` when that is the only one set, in the
+//! environment or in a `.env` file in the directory PhotoCraft was started from. When both are
+//! set, `OPENROUTER_MAIN_KEY` wins. The key is never written into a document, a log line or an error.
 //!
 //! Generate Image makes a new picture from a prompt. With a document open it becomes a new layer;
 //! otherwise it opens a new document. Generative Fill sends the canvas (or the selection, plus a
@@ -87,7 +88,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Generative Fill…",
             menu: &["Edit"],
             shortcut: None,
-            params: r#"{"prompt":text,"model":text} required prompt; optional OpenRouter model id (default google/gemini-3.1-flash-lite-image). Needs OPENROUTER_API_KEY. Sends the canvas, or the selection plus surrounding context, and adds the result as a new layer."#,
+            params: r#"{"prompt":text,"model":text} required prompt; optional OpenRouter model id (default google/gemini-3.1-flash-lite-image). Needs OPENROUTER_MAIN_KEY or OPENROUTER_API_KEY. Sends the canvas, or the selection plus surrounding context, and adds the result as a new layer."#,
             enabled: has_doc,
             journal: true,
             run: |s, p| run(s, FILL, p),
@@ -97,7 +98,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Generate Image…",
             menu: &["Edit"],
             shortcut: None,
-            params: r#"{"prompt":text,"model":text,"aspectRatio":"1:1|16:9|9:16|4:3|3:2|3:4"="1:1"} required prompt; optional model id and aspect ratio. Needs OPENROUTER_API_KEY. Adds a layer, or opens a new document when none is open."#,
+            params: r#"{"prompt":text,"model":text,"aspectRatio":"1:1|16:9|9:16|4:3|3:2|3:4"="1:1"} required prompt; optional model id and aspect ratio. Needs OPENROUTER_MAIN_KEY or OPENROUTER_API_KEY. Adds a layer, or opens a new document when none is open."#,
             enabled: always,
             journal: true,
             run: |s, p| run(s, GENERATE, p),
@@ -419,20 +420,30 @@ fn short_name(text: &str, max: usize) -> String {
     if out.is_empty() { "Generated".into() } else { out }
 }
 
-/// `OPENROUTER_API_KEY` from the environment, then from `./.env` in the current directory.
+/// Inference key first, then the older name. A `.env` often keeps a management key in
+/// `OPENROUTER_API_KEY` and the key that can generate images in `OPENROUTER_MAIN_KEY`.
+const KEY_NAMES: &[&str] = &["OPENROUTER_MAIN_KEY", "OPENROUTER_API_KEY"];
+
+/// `OPENROUTER_MAIN_KEY` or `OPENROUTER_API_KEY` from the environment, then from `./.env`.
 fn api_key() -> Result<String> {
-    if let Ok(value) = std::env::var("OPENROUTER_API_KEY")
-        && let Some(key) = nonempty(&value)
-    {
+    if let Some(key) = key_from_env() {
         return Ok(key);
     }
     if let Ok(dir) = std::env::current_dir()
         && let Ok(text) = read_text_limited(&dir.join(".env"))
-        && let Some(key) = dotenv_value(&text, "OPENROUTER_API_KEY")
+        && let Some(key) = key_from_dotenv(&text)
     {
         return Ok(key);
     }
-    Err(other("Set OPENROUTER_API_KEY, or start PhotoCraft from a directory whose .env file defines it."))
+    Err(other("Set OPENROUTER_MAIN_KEY or OPENROUTER_API_KEY, or start PhotoCraft from a directory whose .env file defines one of them."))
+}
+
+fn key_from_env() -> Option<String> {
+    KEY_NAMES.iter().find_map(|name| std::env::var(name).ok().and_then(|value| nonempty(&value)))
+}
+
+fn key_from_dotenv(text: &str) -> Option<String> {
+    KEY_NAMES.iter().find_map(|name| dotenv_value(text, name))
 }
 
 fn nonempty(value: &str) -> Option<String> {
@@ -584,6 +595,9 @@ mod tests {
         assert_eq!(dotenv_value(text, "OPENROUTER_API_KEY").as_deref(), Some("sk-test"));
         assert_eq!(dotenv_value("OPENROUTER_API_KEY=\n", "OPENROUTER_API_KEY"), None);
         assert_eq!(dotenv_value("NOPE=1\n", "OPENROUTER_API_KEY"), None);
+        let both = "OPENROUTER_API_KEY=sk-management\nOPENROUTER_MAIN_KEY=sk-main\n";
+        assert_eq!(key_from_dotenv(both).as_deref(), Some("sk-main"));
+        assert_eq!(key_from_dotenv("OPENROUTER_API_KEY=sk-only\n").as_deref(), Some("sk-only"));
     }
 
     #[test]
