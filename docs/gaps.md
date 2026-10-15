@@ -132,9 +132,13 @@ what an agent can't finish alone.
 - **Estimate:** 120–200 h.
 
 ### G15. AI and generative features
-- **Missing:** Generative Fill and Expand, Generative Upscale, Neural Filters, Sky Replacement,
-  Super Zoom, ML Select Subject/Sky. There is no ML runtime (AUTO-219-7). Classical substitutes
+- **Missing:** Generative Expand, Generative Upscale, Neural Filters, Sky Replacement,
+  Super Zoom, ML Select Subject/Sky. There is no local ML runtime (AUTO-219-7). Classical substitutes
   exist (GrabCut/max-flow selection, Remove tool by non-local patch completion).
+- **Present:** Edit › Generate Image and Edit › Generative Fill call OpenRouter's image API
+  (`edit.generateImage`, `edit.generativeFill`) when `OPENROUTER_API_KEY` is set. The result is a
+  new layer (or a new document). This is a remote model, not an on-device one, and it is not
+  Photoshop's Generative Fill.
 - **Evidence:** Photoshop's `Required/UXP` ships the Neural Filters gallery and its `.kys` has
   a Neural Filters taskspace; users ask for local models (#2313, #1996, #2682).
 - **Estimate:** 300–600 h. **Human:** owner decision #41 (model licences, local vs remote).
@@ -263,6 +267,7 @@ what an agent can't finish alone.
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-15 | minor | G15: Edit › Generate Image and Generative Fill call OpenRouter (`edit.generateImage`, `edit.generativeFill`). Remote only; no local model, and the AI percentage is unchanged |
 | 2026-10-14 | minor | Corpus floors raised to the measured results of the CMYK, Lab, 32-bit, Levels, Threshold, Posterize, feather and pass-through fixes landed together: Photoshop-authored 165 → 185 of 258, io 146 → 148 of 170, psd-tools 242 → 249 of 309 |
 | 2026-10-13 | minor | G1: CMYK Hue/Saturation and Color Balance work on C, M and Y as inverted RGB with black kept, as Photoshop does; cmyk hue-saturation 100% → 0.4–0.7% bad pixels, color-balance 74% → 25%; floor unchanged |
 | 2026-10-13 | minor | G1: CMYK Posterize works on the stored values (1 − ink); psd-tools posterize_cmyk passes; psd-tools floor → 242 of 309 |

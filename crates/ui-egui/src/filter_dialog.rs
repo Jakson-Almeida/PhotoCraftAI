@@ -300,6 +300,8 @@ pub fn has_dialog(command: &str) -> bool {
                 | "image.mode.colorTable"
                 | "edit.definePattern"
                 | "select.convertToShape"
+                | "edit.generativeFill"
+                | "edit.generateImage"
         ))
         && photocraft_engine::commands::find(command).is_some_and(|c| !parse_spec(c.params).is_empty())
 }
@@ -742,10 +744,16 @@ pub fn body(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
             }
             Kind::Text => {
                 let mut v = f.get(&p.key).and_then(Value::as_str).unwrap_or_default().to_string();
-                ui.horizontal(|ui| {
+                // A prompt is a sentence, not a file name: give it a few lines.
+                if p.key == "prompt" {
                     ui.label(egui::RichText::new(label(&p.key)).color(t.text_dim));
-                    ui.add(egui::TextEdit::singleline(&mut v).desired_width(200.0));
-                });
+                    ui.add(egui::TextEdit::multiline(&mut v).desired_width(ui.available_width()).desired_rows(3));
+                } else {
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new(label(&p.key)).color(t.text_dim));
+                        ui.add(egui::TextEdit::singleline(&mut v).desired_width(200.0));
+                    });
+                }
                 if v.is_empty() {
                     f.remove(&p.key);
                 } else {
